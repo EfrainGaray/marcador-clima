@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+ic_cache/
+*.json
+!ejemplo.json
+venv/

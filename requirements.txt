@@ -1,0 +1,3 @@
+# Este repo asume que ya instalaste el envoltorio de AIFS y sus dependencias
+# (torch, anemoi-*, earthkit-*) siguiendo el README.
+# marcador.py solo necesita la biblioteca estandar.
