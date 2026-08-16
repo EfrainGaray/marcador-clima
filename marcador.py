@@ -55,7 +55,12 @@ def cmd_registrar(args):
     try:
         oficial = traer(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
                         f"&hourly=temperature_2m&models={args.modelo_oficial}"
-                        f"&forecast_days=4&timezone=UTC")
+                        f"&forecast_days=4&timezone=UTC"
+                        # Sin esto Open-Meteo elige una celda terrestre de elevación
+                        # parecida y ajusta por altura con un DEM de 90 m: contra el
+                        # gridpoint crudo de AIFS eso metía 0.60 °C de sesgo, dos
+                        # tercios del error que se quiere medir.
+                        f"&cell_selection=nearest&elevation=nan")
     except Exception as e:
         print(f"aviso: no se pudo traer el oficial ({type(e).__name__}); queda en null")
         oficial = {}
