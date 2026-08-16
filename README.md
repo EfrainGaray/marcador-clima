@@ -101,8 +101,25 @@ Imprime el marcador acumulado:
 
 ```
 verificado: 3 definitivos (ERA5), 0 provisionales
-marcador con 3 horas -> IA local 0.75 °C · oficial 0.23 °C
+marcador con 3 horas
+  IA local : MAE 0.44 °C · RMSE 0.52 °C
+  oficial  : MAE 0.33 °C · RMSE 0.41 °C
 ```
+
+El **MAE** es el error medio absoluto. El **RMSE** eleva al cuadrado antes de
+promediar, así que castiga más los errores grandes: si queda bastante por encima
+del MAE, el modelo falla poco pero falla feo. En clima eso importa, porque lo que
+duele son los extremos.
+
+**4. Exportar** el registro a CSV, con los errores ya calculados:
+
+```bash
+python marcador.py exportar --registro clima.jsonl --salida clima.csv
+```
+
+Una fila por paso de pronóstico, con el horizonte en horas y ambos errores. Las
+horas que todavía no ocurren van con la columna real vacía: nunca se rellenan con
+una estimación, porque entonces el archivo dejaría de servir para juzgar.
 
 Los pasos 1 a 3 encadenados, una vez al día, es todo lo que hace falta.
 
@@ -142,6 +159,12 @@ a 570 metros, la diferencia esperada es de unos 65 hPa.
 **La atención no es la original.** El envoltorio sustituye `flash-attn` por
 SDPA, y avisa de que los resultados no son bit a bit idénticos a los del
 entrenamiento. Parte del error medido es de esa sustitución, no del modelo.
+
+**El IFS se mueve.** Se actualiza cuatro veces al día, y si consultas el
+pronóstico oficial vigente puede venir de un análisis más reciente que el que usó
+tu corrida local, con horas extra de información sobre la atmósfera. Eso favorece
+al oficial. Para una comparación estricta hay que fijar ambas al mismo análisis
+inicial; este código todavía no lo hace, y conviene saberlo al leer los números.
 
 **No es para uso operativo.** El propio envoltorio lo dice. Es un modelo
 determinista, así que da un único futuro y no una distribución; para eso está

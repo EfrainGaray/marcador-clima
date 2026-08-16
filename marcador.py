@@ -6,6 +6,7 @@ Dos órdenes:
     registrar   guarda lo que predijo el modelo local y lo que predice el IFS
                 operativo de ECMWF, para las mismas horas exactas
     verificar   rellena, en las horas que ya pasaron, lo que de verdad ocurrió
+    exportar    vuelca el registro a CSV, con los errores ya calculados
 
 Las predicciones se escriben antes del hecho y no se tocan nunca más. Solo se
 añade la columna de la realidad. Con los meses, el registro dice quién acierta
@@ -149,9 +150,57 @@ def cmd_verificar(args):
     juzgados = [p for f in filas for p in f["pasos"]
                 if p["real_C"] is not None and p["oficial_C"] is not None]
     if juzgados:
-        mae = lambda k: sum(abs(p[k] - p["real_C"]) for p in juzgados) / len(juzgados)
-        print(f"marcador con {len(juzgados)} horas -> "
-              f"IA local {mae('ia_local_C'):.2f} °C · oficial {mae('oficial_C'):.2f} °C")
+        n = len(juzgados)
+        mae = lambda k: sum(abs(p[k] - p["real_C"]) for p in juzgados) / n
+        # RMSE castiga más los errores grandes: un modelo puede tener buen MAE y
+        # mal RMSE si falla poco pero, cuando falla, falla feo.
+        rmse = lambda k: (sum((p[k] - p["real_C"]) ** 2 for p in juzgados) / n) ** 0.5
+        print(f"marcador con {n} horas")
+        print(f"  IA local : MAE {mae('ia_local_C'):.2f} °C · RMSE {rmse('ia_local_C'):.2f} °C")
+        print(f"  oficial  : MAE {mae('oficial_C'):.2f} °C · RMSE {rmse('oficial_C'):.2f} °C")
+
+
+def cmd_exportar(args):
+    """Vuelca el registro a CSV: una fila por paso, con los errores calculados.
+
+    Las horas que aún no ocurren van con la columna real vacía. Nunca se rellenan
+    con una estimación, porque entonces el archivo dejaría de servir para juzgar.
+    """
+    registro = Path(args.registro)
+    if not registro.exists():
+        print("no hay registro todavía")
+        return
+    filas = [json.loads(l) for l in registro.read_text().splitlines() if l.strip()]
+    ahora = datetime.now(timezone.utc)
+
+    cab = ["analisis_utc", "registrado_utc", "hora_utc", "horizonte_h", "ia_local_C",
+           "oficial_C", "real_C", "fuente_real", "error_ia_C", "error_oficial_C",
+           "lat_grilla", "lon_grilla", "hardware", "segundos_pronostico"]
+    lineas = [",".join(cab)]
+
+    for f in filas:
+        t0 = datetime.fromisoformat(f["analisis_utc"]).replace(tzinfo=timezone.utc)
+        for p in f["pasos"]:
+            tp = datetime.fromisoformat(p["hora_utc"]).replace(tzinfo=timezone.utc)
+            ocurrio = tp < ahora
+            real = p["real_C"] if (ocurrio and p["real_C"] is not None) else None
+            e_ia = f"{abs(p['ia_local_C'] - real):.2f}" if real is not None else ""
+            e_of = (f"{abs(p['oficial_C'] - real):.2f}"
+                    if real is not None and p["oficial_C"] is not None else "")
+            lineas.append(",".join(str(x) for x in [
+                f["analisis_utc"], f.get("registrado_utc", ""), p["hora_utc"],
+                round((tp - t0).total_seconds() / 3600),
+                p["ia_local_C"] if p["ia_local_C"] is not None else "",
+                p["oficial_C"] if p["oficial_C"] is not None else "",
+                real if real is not None else "",
+                (p["fuente_real"] or "") if real is not None else "",
+                e_ia, e_of,
+                f["coords_grilla"][0], f["coords_grilla"][1],
+                f'"{f.get("hardware", "")}"', f.get("segundos_pronostico", ""),
+            ]))
+
+    Path(args.salida).write_text("\n".join(lineas) + "\n")
+    print(f"{len(lineas) - 1} filas -> {args.salida}")
 
 
 def main():
@@ -172,6 +221,11 @@ def main():
     v.add_argument("--lat", type=float, required=True)
     v.add_argument("--lon", type=float, required=True)
     v.set_defaults(func=cmd_verificar)
+
+    e = sub.add_parser("exportar", help="vuelca el registro a CSV")
+    e.add_argument("--registro", default="clima.jsonl")
+    e.add_argument("--salida", default="clima.csv")
+    e.set_defaults(func=cmd_exportar)
 
     args = p.parse_args()
     args.func(args)
