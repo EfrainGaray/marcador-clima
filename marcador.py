@@ -123,7 +123,13 @@ def cmd_verificar(args):
     for f in filas:
         for p in f["pasos"]:
             if p["fuente_real"] == "era5":
-                continue                      # lo definitivo no se revisa
+                continue
+            # El filtro de arriba decide QUE verificar, pero escribir sin
+            # repetir la comprobacion marcaba como "real" horas que aun no
+            # ocurren: las APIs devuelven el dia en curso completo, con las
+            # horas futuras rellenadas por su propio modelo.
+            if datetime.fromisoformat(p["hora_utc"]).replace(tzinfo=timezone.utc) >= ahora:
+                continue
             h = p["hora_utc"]
             if h in definitivo:
                 p["real_C"], p["fuente_real"] = round(definitivo[h], 2), "era5"
