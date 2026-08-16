@@ -27,7 +27,7 @@ Medido en una RTX 4070 Ti SUPER de 16 GB, pronóstico a 48 horas:
 |---|---|---|
 | Tiempo | 108.5 s | 1984.3 s |
 | Memoria de video | 5.77 GB | — |
-| Punto de control | 0.93 GB | 0.93 GB |
+| Punto de control | 994 MB | 994 MB |
 
 Las dos rutas dan el mismo resultado: la diferencia media entre GPU y CPU fue
 de 0.0075 °C, y aparece recién en el sexto paso, porque cada paso toma como
@@ -135,7 +135,7 @@ Un JSONL, una línea por corrida:
   "segundos_pronostico": 108.5,
   "pasos": [
     {"hora_utc": "2026-08-16T06:00", "ia_local_C": 5.77,
-     "oficial_C": 6.3, "real_C": 6.6, "fuente_real": "era5"}
+     "oficial_C": 6.0, "real_C": 6.6, "fuente_real": "era5"}
   ]
 }
 ```
